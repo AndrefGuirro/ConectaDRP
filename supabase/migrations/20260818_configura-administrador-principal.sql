@@ -1,8 +1,9 @@
 begin;
 
-insert into public.administradores (email, ativo)
-values ('andrefguirro@gmail.com', true)
+insert into public.administradores (nome, email, ativo)
+values ('Administrador Principal', 'andrefguirro@gmail.com', true)
 on conflict (email) do update
-set ativo = true;
+set nome = excluded.nome,
+    ativo = true;
 
 commit;
