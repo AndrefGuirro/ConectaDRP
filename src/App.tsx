@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import './App.css'
-import { supabase } from './lib/supabase'
+import { supabase, supabaseConfigured } from './lib/supabase'
 
 type City = { id: string; name: string; drp: string }
 type Course = { id: string; name: string; eixo: string }
@@ -56,11 +56,13 @@ function App() {
   const [session, setSession] = useState<any>(null)
   const [, refreshCatalog] = useState(0)
   useEffect(() => {
+    if (!supabaseConfigured) return
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
     return () => data.subscription.unsubscribe()
   }, [])
   useEffect(() => {
+    if (!supabaseConfigured) return
     const loadCatalog = async () => {
       const [{ data: cityRows, error: cityError }, { data: courseRows, error: courseError }] = await Promise.all([
         supabase.from('cidades').select('id, nome, estado, drps(nome)').eq('status', 'ATIVO').order('nome'),
@@ -92,6 +94,7 @@ function App() {
   const isAdmin = norm(session?.user?.email ?? '') === adminEmail
 
   useEffect(() => {
+    if (!supabaseConfigured) return
     const loadPeople = async () => {
       const { data, error } = await supabase.from('colegas').select('id, nome, telefone, cidade_id, curso_id, semestre, status, cidades(nome, drps(nome)), cursos(nome, eixos(nome))').eq('status', 'ATIVO').order('nome')
       if (error) return
@@ -114,7 +117,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!supabaseConfigured || !isAdmin) return
     const loadMessages = async () => {
       const { data } = await supabase.from('mensagens_contato').select('id, nome, email, telefone, mensagem, created_at').order('created_at', { ascending: false })
       setMessages((data ?? []).map((row: any) => ({ id: row.id, name: row.nome, email: row.email, phone: row.telefone ?? '', message: row.mensagem, createdAt: row.created_at })))
@@ -138,6 +141,7 @@ function App() {
         <Link to="/" className="brand"><span className="brand-mark">C</span><span>ConectaDRP</span></Link>
         <nav className="topbar-nav"><NavLink to="/" end>Início</NavLink><NavLink to="/cadastro">Cadastro</NavLink><button className="nav-contact-button" onClick={() => setContactOpen(true)}>Fale conosco</button><NavLink to="/admin" className="admin-lock-link">🔒</NavLink></nav>
       </div></header>
+      {!supabaseConfigured && <div className="container"><div className="alert warning">O ambiente está sem as variáveis do Supabase. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY na Vercel e faça um novo deploy.</div></div>}
       <main className="page-container"><Routes>
         <Route path="/" element={<Home people={people} />} />
         <Route path="/cadastro" element={<Register people={people} setPeople={setPeople} />} />
